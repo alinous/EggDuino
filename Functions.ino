@@ -30,6 +30,7 @@ void queryPen() {
 }
 
 void queryButton() {
+        prgButtonState = (LOW == digitalRead(prgButton));
 	Serial.print(String(prgButtonState) +"\r\n");
 	sendAck();
 }

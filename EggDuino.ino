@@ -37,6 +37,8 @@ Thanks to my wife and my daughter for their patience. :-)
   #define penMicrostep 16 //only 1,2,4,8,16 allowed, because of Integer-Math in this Sketch
 //Servo
   #define servoPin 3
+// PRG button
+  #define prgButton 13
 
 //make Objects
   AccelStepper rotMotor(1, step1, dir1);
@@ -68,6 +70,7 @@ void setup() {
     Serial.begin(9600);
     makeComInterface();
     initHardware();
+    pinMode(prgButton, INPUT_PULLUP);
 }
 
 void loop() {
