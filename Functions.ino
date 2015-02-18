@@ -106,6 +106,7 @@ void stepperMove(){
 		  sendAck();
 	   }
        if ( (penStepsEBB!=0) || (rotStepsEBB!=0) )  {
+	sendAck();
 //################### Move-Code Start ############################################################
            //Turn on Motors, if they are off....
 		   digitalWrite(enableRotMotor, LOW) ;
@@ -135,7 +136,7 @@ void stepperMove(){
 				   rotMotor.runSpeedToPosition();
 			     }
 //################### Move-Code End ############################################################
-		   sendAck();     //Mission completed
+	//	   sendAck();     //Mission completed
             }
 	  }
    else
