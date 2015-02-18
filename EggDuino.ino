@@ -29,12 +29,12 @@ Thanks to my wife and my daughter for their patience. :-)
   #define step1 11
   #define dir1 10
   #define enableRotMotor 9
-  #define rotMicrostep 8  //only 1,2,4,8,16 allowed, because of Integer-Math in this Sketch
+  #define rotMicrostep 16  //only 1,2,4,8,16 allowed, because of Integer-Math in this Sketch
 //Pen Stepper
   #define step2 8
   #define dir2 7
   #define enablePenMotor 6
-  #define penMicrostep 8 //only 1,2,4,8,16 allowed, because of Integer-Math in this Sketch
+  #define penMicrostep 16 //only 1,2,4,8,16 allowed, because of Integer-Math in this Sketch
 //Servo
   #define servoPin 3
 
