@@ -17,7 +17,6 @@ Thanks to my wife and my daughter for their patience. :-)
 /* TODOs:
 1	collision control via penMin/penMax
 2	implement homing sequence via microswitch or optical device
-3	implement hardware-button , EGGBOT-Guys call it "PRG-Button"
 */
 #include "AccelStepper.h"
 //#include "libs\AccelStepper.h" // nice lib from http://www.airspayce.com/mikem/arduino/AccelStepper/
@@ -39,9 +38,11 @@ Thanks to my wife and my daughter for their patience. :-)
 //Servo
   #define servoPin 3
 // PRG button
-  #define prgButton 13
+  #define prgButton 12
 // pen up/down button
-  #define penToggleButton 12
+  #define penToggleButton 2
+// motors enable button
+  #define motorsButton 4
 
   #define penUpPosEEAddress ((uint16_t *)0)
   #define penDownPosEEAddress ((uint16_t *)2)
@@ -76,15 +77,57 @@ Thanks to my wife and my daughter for their patience. :-)
   long penToggleButtonDebounce = 0;
   int penToggleButtonState = HIGH;
   int lastPenToggleButtonState = HIGH;
+  long motorsButtonDebounce = 0;
+  int motorsButtonState = HIGH;
+  int lastMotorsButtonState = HIGH;
+  int motorsEnabled = 0;
+
+  typedef void (*ActionCb)(void);
+
+  class Button {
+    public:
+	Button(byte p, ActionCb a): debounce(0), state(1), lastState(1), action(a), pin(p) {};
+
+        void check() {
+          byte b = digitalRead(pin);
+          long t = millis();
+
+          if (b != lastState) {
+            debounce = t;
+          }
+
+          if ((t - debounce) > debounceDelay) {
+            if (b != state) {
+              state = b;
+
+            if (!state) {
+              (*action)();
+            }
+          }
+        }
+
+        lastState = b;
+      }
+
+    private:
+	long debounce;
+	byte state:1;
+	byte lastState:1;
+        byte pin;
+        ActionCb action;
+  };
+
+  Button penToggle(penToggleButton, doTogglePen);
+  Button motorsToggle(motorsButton, toggleMotors);
 
 void setup() {   
     Serial.begin(9600);
-    loadPenPosFromEE();
     makeComInterface();
     initHardware();
 }
 
 void loop() {
      SCmd.readSerial();
-     checkPenToggleButton();
+     penToggle.check();
+     motorsToggle.check();
 }

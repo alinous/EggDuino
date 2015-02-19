@@ -110,8 +110,7 @@ void stepperMove(){
 	sendAck();
 //################### Move-Code Start ############################################################
            //Turn on Motors, if they are off....
-		   digitalWrite(enableRotMotor, LOW) ;
-           digitalWrite(enablePenMotor, LOW) ;
+                   motorsOn();
 		   //incoming EBB-Steps will be multiplied by 16, then Integer-maths is done, result will be divided by 16
 		   // This make thinks here really complicated, but floating point-math kills performance and memory, believe me... I tried...
 		   long rotSteps =   (  (long)rotStepsEBB * 16 / rotStepCorrection) + (long)rotStepError;	//correct incoming EBB-Steps to our microstep-Setting and multiply  by 16 to avoid floatingpoint...
@@ -224,46 +223,40 @@ void enableMotors(){
       //values parsed
   if ((arg != NULL) && (val == NULL)){
      switch (cmd) { 
-       case 0: digitalWrite(enableRotMotor, HIGH) ;
-               digitalWrite(enablePenMotor, HIGH) ;
+       case 0: motorsOff();
                sendAck();
                break;       
        case 1: rotStepMode=16; 
                penStepMode=16;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        case 2: rotStepMode=8; 
                penStepMode=8;
 			   rotStepCorrection = rotStepMode/rotMicrostep;
 			   penStepCorrection = penStepMode/penMicrostep;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        case 3: rotStepMode=4; 
                penStepMode=4;
 			   rotStepCorrection = rotStepMode/rotMicrostep;
 			   penStepCorrection = penStepMode/penMicrostep;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        case 4: rotStepMode=2; 
                penStepMode=2;
 			   rotStepCorrection = rotStepMode/rotMicrostep;
 			   penStepCorrection = penStepMode/penMicrostep;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        case 5: rotStepMode=1; 
                penStepMode=1;
 			   rotStepCorrection = rotStepMode/rotMicrostep;
 			   penStepCorrection = penStepMode/penMicrostep;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        default:
@@ -273,38 +266,32 @@ void enableMotors(){
 //the following implementaion is a little bit cheated, because i did not know, how to implement different values for first and second argument.
   if ((arg != NULL) && (val != NULL)){
      switch (value) {    
-       case 0: digitalWrite(enableRotMotor, HIGH) ;
-               digitalWrite(enablePenMotor, HIGH) ;
+       case 0: motorsOff();
                sendAck();
                break;  
        case 1: rotStepMode=16; 
                penStepMode=16;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        case 2: rotStepMode=8; 
                penStepMode=8;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        case 3: rotStepMode=4; 
                penStepMode=4;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        case 4: rotStepMode=2; 
                penStepMode=2;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
-               break;
+                 break;
        case 5: rotStepMode=1; 
                penStepMode=1;
-               digitalWrite(enableRotMotor, LOW) ;
-               digitalWrite(enablePenMotor, LOW) ;
+               motorsOn();
                sendAck();
                break;
        
@@ -314,7 +301,26 @@ void enableMotors(){
   }
 }
 
-  
+void motorsOff() {
+  digitalWrite(enableRotMotor, HIGH);
+  digitalWrite(enablePenMotor, HIGH);  
+  motorsEnabled = 0;
+}
+
+void motorsOn() {
+  digitalWrite(enableRotMotor, LOW) ;
+  digitalWrite(enablePenMotor, LOW) ;
+  motorsEnabled = 1;
+}
+
+void toggleMotors() {
+  if (motorsEnabled) {
+    motorsOff();
+  } else {
+    motorsOn();
+  }
+}
+
 void stepperModeConfigure(){
   int cmd;
   int value;

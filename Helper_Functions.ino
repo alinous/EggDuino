@@ -2,18 +2,21 @@ void initHardware(){
   // enable eeprom wait in avr/eeprom.h functions
   SPMCSR &= ~SELFPRGEN;
 
+  loadPenPosFromEE();
+
   pinMode(enableRotMotor, OUTPUT); 
   pinMode(enablePenMotor, OUTPUT);  
   pinMode(prgButton, INPUT_PULLUP);
   pinMode(penToggleButton, INPUT_PULLUP);
+  pinMode(motorsButton, INPUT_PULLUP);
+
   rotMotor.setMaxSpeed(2000.0);
   rotMotor.setAcceleration(10000.0);
   penMotor.setMaxSpeed(2000.0);
   penMotor.setAcceleration(10000.0);
-  digitalWrite(enableRotMotor, HIGH) ;
-  digitalWrite(enablePenMotor, HIGH) ;
+  motorsOff();
   penServo.attach(servoPin);
-  penServo.write(penUpPos);
+  penServo.write(penState);
   }
 
 void inline loadPenPosFromEE() {
@@ -36,27 +39,5 @@ void inline sendAck(){
 
 void inline sendError(){
 	Serial.print("unknown CMD\r\n");
-}
-
-void inline checkPenToggleButton() {
-  int b = digitalRead(penToggleButton);
-
-  long t = millis();
-
-  if (b != lastPenToggleButtonState) {
-    penToggleButtonDebounce = t;
-  }
-
-  if ((t - penToggleButtonDebounce) > debounceDelay) {
-    if (b != penToggleButtonState) {
-      penToggleButtonState = b;
-
-      if (LOW == penToggleButtonState) {
-        doTogglePen();
-      }
-    }
-  }
-
-  lastPenToggleButtonState = b;
 }
 
