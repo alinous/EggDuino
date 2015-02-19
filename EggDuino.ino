@@ -23,6 +23,7 @@ Thanks to my wife and my daughter for their patience. :-)
 //#include "libs\AccelStepper.h" // nice lib from http://www.airspayce.com/mikem/arduino/AccelStepper/
 #include <Servo.h>
 #include "SerialCommand.h" //nice lib from Stefan Rado, https://github.com/kroimon/Arduino-SerialCommand
+#include <avr/eeprom.h>
 
 #define initSting "EBBv13_and_above Protocol emulated by Eggduino-Firmware V1.2"
 //Rotational Stepper
@@ -39,6 +40,13 @@ Thanks to my wife and my daughter for their patience. :-)
   #define servoPin 3
 // PRG button
   #define prgButton 13
+// pen up/down button
+  #define penToggleButton 12
+
+  #define penUpPosEEAddress ((uint16_t *)0)
+  #define penDownPosEEAddress ((uint16_t *)2)
+
+  #define debounceDelay 50
 
 //make Objects
   AccelStepper rotMotor(1, step1, dir1);
@@ -65,14 +73,18 @@ Thanks to my wife and my daughter for their patience. :-)
   uint8_t penStepCorrection = penStepMode/penMicrostep ; //devide EBB-Coordinates by this factor to get EGGduino-Steps
   float rotSpeed=0; 
   float penSpeed=0; // these are local variables for Function SteppermotorMove-Command, but for performance-reasons it will be initialized here
+  long penToggleButtonDebounce = 0;
+  int penToggleButtonState = HIGH;
+  int lastPenToggleButtonState = HIGH;
 
 void setup() {   
     Serial.begin(9600);
+    loadPenPosFromEE();
     makeComInterface();
     initHardware();
-    pinMode(prgButton, INPUT_PULLUP);
 }
 
 void loop() {
-     SCmd.readSerial();  
+     SCmd.readSerial();
+     checkPenToggleButton();
 }

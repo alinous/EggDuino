@@ -191,28 +191,25 @@ void togglePen(){
   arg = SCmd.next(); 
   if (arg != NULL) 
       value = atoi(arg);
+  else
+      value = 500;
+
+  doTogglePen();
+
+  delay(value);
+  sendAck();
+}
+
+void doTogglePen() {
   if (penState==penUpPos) {
             penServo.write(penDownPos);
             penState=penDownPos;
-            if (arg != NULL) 
-                      delay(value);
-            else   
-                      delay(500);
-			sendAck();
-            }
-			
-  else   {
+  } else   {
             penServo.write(penUpPos);
             penState=penUpPos;
-            if (arg != NULL) 
-                      delay(value);
-            else   
-                      delay(500);
-		    sendAck();
         }    
-}  
-  
-  
+}
+
 void enableMotors(){
   int cmd;
   int value;
@@ -332,9 +329,11 @@ void stepperModeConfigure(){
   if ((arg != NULL) && (val != NULL)){
      switch (cmd) {      
        case 4: penDownPos= (int) ((float) (value-6000)/(float) 94.18); // transformation from EBB to PWM-Stepper
+               storePenDownPosInEE();
                sendAck();
                break;
        case 5: penUpPos= (int)((float) (value-6000)/(float) 94.18); // transformation from EBB to PWM-Stepper
+               storePenUpPosInEE();
                sendAck();
                break;
        case 6: //rotMin=value;    ignored
