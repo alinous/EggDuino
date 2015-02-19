@@ -5,6 +5,7 @@ void makeComInterface(){
   SCmd.addCommand("SC",stepperModeConfigure);
   SCmd.addCommand("SP",setPen);
   SCmd.addCommand("SM",stepperMove);
+  SCmd.addCommand("SMQB",stepperMoveQueryButton); // composite function enabling smooth movement
   SCmd.addCommand("SE",ignore);
   SCmd.addCommand("TP",togglePen);
   SCmd.addCommand("PO",ignore);    //Engraver command, not implemented, gives fake answer
@@ -15,7 +16,7 @@ void makeComInterface(){
   SCmd.addCommand("SL",setLayer);
   SCmd.addCommand("QL",queryLayer);
   SCmd.addCommand("QP",queryPen);
-  SCmd.addCommand("QB",queryButton); //preparation for "PRG" Button, actually gives fake answer, 
+  SCmd.addCommand("QB",queryButton);
   SCmd.setDefaultHandler(unrecognized); // Handler for command that isn't matched (says "What?") 
   }
 
@@ -82,69 +83,107 @@ void nodeCountDecrement() {
 	sendAck();
 }
 
-void stepperMove(){
+void stepperMove() {
   uint16_t duration=0; //in ms
   int penStepsEBB=0; //Pen
   int rotStepsEBB=0; //Rot
+
+  if (!parseSMArgs(&duration, &penStepsEBB, &rotStepsEBB)) {
+    sendError();
+    return;
+  }
+
+  if ( (penStepsEBB==0) && (rotStepsEBB==0) ) {
+    delay(duration);
+    sendAck();
+    return;
+  }
+
+  doMove(duration, penStepsEBB, rotStepsEBB);
+  sendAck();
+}
+
+void stepperMoveQueryButton() {
+  uint16_t duration=0; //in ms
+  int penStepsEBB=0; //Pen
+  int rotStepsEBB=0; //Rot
+
+  if (!parseSMArgs(&duration, &penStepsEBB, &rotStepsEBB)) {
+    sendError();
+    return;
+  }
+
+  if ( (penStepsEBB==0) && (rotStepsEBB==0) ) {
+    delay(duration);
+    queryButton();
+    return;
+  }
+
+  // sending ACK before actual move to allow buffering 
+  queryButton();
+  doMove(duration, penStepsEBB, rotStepsEBB);
+}
+
+bool parseSMArgs(uint16_t *duration, int *penStepsEBB, int *rotStepsEBB) {
   char *arg1;
   char *arg2;
   char *arg3;
   arg1 = SCmd.next();
   if (arg1 != NULL) {
-      duration = atoi(arg1);
-      arg2 = SCmd.next();
-      }
-   if (arg2 != NULL) {
-      penStepsEBB = atoi(arg2);
-      arg3 = SCmd.next();
-      }
-   if (arg3 != NULL) {
-      rotStepsEBB = atoi(arg3);
-	  //sendAck();
+     *duration = atoi(arg1);
+     arg2 = SCmd.next();
+  }
+  if (arg2 != NULL) {
+     *penStepsEBB = atoi(arg2);
+     arg3 = SCmd.next();
+  }
+  if (arg3 != NULL) {
+     *rotStepsEBB = atoi(arg3);
       
-       if ( (penStepsEBB==0) && (rotStepsEBB==0) ) {
-          delay(duration);
-		  sendAck();
-	   }
-       if ( (penStepsEBB!=0) || (rotStepsEBB!=0) )  {
-	sendAck();
-//################### Move-Code Start ############################################################
-           //Turn on Motors, if they are off....
-                   motorsOn();
-		   //incoming EBB-Steps will be multiplied by 16, then Integer-maths is done, result will be divided by 16
-		   // This make thinks here really complicated, but floating point-math kills performance and memory, believe me... I tried...
-		   long rotSteps =   (  (long)rotStepsEBB * 16 / rotStepCorrection) + (long)rotStepError;	//correct incoming EBB-Steps to our microstep-Setting and multiply  by 16 to avoid floatingpoint...
-		   long penSteps =   (  (long)penStepsEBB * 16 / penStepCorrection) + (long)penStepError;
-		   int rotStepsToGo = (int) (rotSteps/16);		//Calc Steps to go, which are possible on our machine
-		   int penStepsToGo = (int) (penSteps/16);
-		   rotStepError = (long)rotSteps - ((long) rotStepsToGo * (long)16);	// calc Position-Error, if there is one
-		   penStepError = (long)penSteps - ((long) penStepsToGo * (long)16);
-		   long temp_rotSpeed =  ((long)rotStepsToGo * (long)1000 / (long)duration );	// calc Speed in Integer Math
-		   long temp_penSpeed =  ((long)penStepsToGo * (long)1000 / (long)duration ) ;
-		   if (temp_rotSpeed <0 ) //remove sign, there is no negative Speed....
-			   temp_rotSpeed= -temp_rotSpeed;
-		   if (temp_penSpeed <0 ) //remove sign, there is no negative Speed....
-			   temp_penSpeed= -temp_penSpeed;
-		   float rotSpeed= (float) temp_rotSpeed;	// type cast 
-		   float penSpeed= (float) temp_penSpeed;
-           rotMotor.move(rotStepsToGo);		// finally, let us set the target position...
-           rotMotor.setSpeed(rotSpeed);		// and the Speed!
-           penMotor.move(penStepsToGo);
-           penMotor.setSpeed( penSpeed );
-           while ( penMotor.distanceToGo() || rotMotor.distanceToGo() ) { 
-				   penMotor.runSpeedToPosition(); // Moving.... moving... moving....
-				   rotMotor.runSpeedToPosition();
-			     }
-//################### Move-Code End ############################################################
-	//	   sendAck();     //Mission completed
-            }
-	  }
-   else
-      sendError();
-       
+     return true;
+  }  
+
+  return false;
 }
 
-  
+void doMove(uint16_t duration, int penStepsEBB, int rotStepsEBB) {
+  motorsOn();
+
+  //incoming EBB-Steps will be multiplied by 16, then Integer-maths is done, result will be divided by 16
+  // This make thinks here really complicated, but floating point-math kills performance and memory, believe me... I tried...
+  long rotSteps =   (  (long)rotStepsEBB * 16 / rotStepCorrection) + (long)rotStepError;	//correct incoming EBB-Steps to our microstep-Setting and multiply  by 16 to avoid floatingpoint...
+  long penSteps =   (  (long)penStepsEBB * 16 / penStepCorrection) + (long)penStepError;
+
+  int rotStepsToGo = (int) (rotSteps/16);		//Calc Steps to go, which are possible on our machine
+  int penStepsToGo = (int) (penSteps/16);
+
+  rotStepError = (long)rotSteps - ((long) rotStepsToGo * (long)16);	// calc Position-Error, if there is one
+  penStepError = (long)penSteps - ((long) penStepsToGo * (long)16);
+
+  long temp_rotSpeed =  ((long)rotStepsToGo * (long)1000 / (long)duration );	// calc Speed in Integer Math
+  long temp_penSpeed =  ((long)penStepsToGo * (long)1000 / (long)duration ) ;
+
+  if (temp_rotSpeed <0 ) //remove sign, there is no negative Speed....
+    temp_rotSpeed= -temp_rotSpeed;
+
+  if (temp_penSpeed <0 ) //remove sign, there is no negative Speed....
+    temp_penSpeed= -temp_penSpeed;
+
+  float rotSpeed= (float) temp_rotSpeed;	// type cast 
+  float penSpeed= (float) temp_penSpeed;
+
+  rotMotor.move(rotStepsToGo);		// finally, let us set the target position...
+  rotMotor.setSpeed(rotSpeed);		// and the Speed!
+
+  penMotor.move(penStepsToGo);
+  penMotor.setSpeed( penSpeed );
+
+  while ( penMotor.distanceToGo() || rotMotor.distanceToGo() ) { 
+    penMotor.runSpeedToPosition(); // Moving.... moving... moving....
+    rotMotor.runSpeedToPosition();
+  }
+}
+
 void setPen(){
   int cmd;
   int value;
