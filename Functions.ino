@@ -16,7 +16,7 @@ void makeComInterface(){
   SCmd.addCommand("SL",setLayer);
   SCmd.addCommand("QL",queryLayer);
   SCmd.addCommand("QP",queryPen);
-  SCmd.addCommand("QB",queryButton);
+  SCmd.addCommand("QB",queryButton);  //"PRG" Button, 
   SCmd.setDefaultHandler(unrecognized); // Handler for command that isn't matched (says "What?") 
   }
 
@@ -31,15 +31,15 @@ void queryPen() {
 }
 
 void queryButton() {
-        prgButtonState = (LOW == digitalRead(prgButton));
 	Serial.print(String(prgButtonState) +"\r\n");
+	prgButtonState = 0;
 	sendAck();
 }
   
 void queryLayer() {
   Serial.print(String(layer) +"\r\n");
   sendAck();
-  } 
+} 
   
 void setLayer() {
 	  uint32_t value=0;
@@ -149,34 +149,36 @@ bool parseSMArgs(uint16_t *duration, int *penStepsEBB, int *rotStepsEBB) {
 void doMove(uint16_t duration, int penStepsEBB, int rotStepsEBB) {
   motorsOn();
 
-  //incoming EBB-Steps will be multiplied by 16, then Integer-maths is done, result will be divided by 16
-  // This make thinks here really complicated, but floating point-math kills performance and memory, believe me... I tried...
-  long rotSteps =   (  (long)rotStepsEBB * 16 / rotStepCorrection) + (long)rotStepError;	//correct incoming EBB-Steps to our microstep-Setting and multiply  by 16 to avoid floatingpoint...
-  long penSteps =   (  (long)penStepsEBB * 16 / penStepCorrection) + (long)penStepError;
+  if( (1 == rotStepCorrection) && (1 == penStepCorrection) ){ // if coordinatessystems are identical
+    //set Coordinates and Speed
+    rotMotor.move(rotStepsEBB);
+    rotMotor.setSpeed( abs( (float)rotStepsEBB * (float)1000 / (float)duration ) );
+    penMotor.move(penStepsEBB);
+    penMotor.setSpeed( abs( (float)penStepsEBB * (float)1000 / (float)duration ) );
+  } else { 
+     //incoming EBB-Steps will be multiplied by 16, then Integer-maths is done, result will be divided by 16
+     // This make thinks here really complicated, but floating point-math kills performance and memory, believe me... I tried...
+    long rotSteps =   (  (long)rotStepsEBB * 16 / rotStepCorrection) + (long)rotStepError;	//correct incoming EBB-Steps to our microstep-Setting and multiply  by 16 to avoid floatingpoint...
+    long penSteps =   (  (long)penStepsEBB * 16 / penStepCorrection) + (long)penStepError;
 
-  int rotStepsToGo = (int) (rotSteps/16);		//Calc Steps to go, which are possible on our machine
-  int penStepsToGo = (int) (penSteps/16);
+    int rotStepsToGo = (int) (rotSteps/16);		//Calc Steps to go, which are possible on our machine
+    int penStepsToGo = (int) (penSteps/16);
 
-  rotStepError = (long)rotSteps - ((long) rotStepsToGo * (long)16);	// calc Position-Error, if there is one
-  penStepError = (long)penSteps - ((long) penStepsToGo * (long)16);
+    rotStepError = (long)rotSteps - ((long) rotStepsToGo * (long)16);	// calc Position-Error, if there is one
+    penStepError = (long)penSteps - ((long) penStepsToGo * (long)16);
 
-  long temp_rotSpeed =  ((long)rotStepsToGo * (long)1000 / (long)duration );	// calc Speed in Integer Math
-  long temp_penSpeed =  ((long)penStepsToGo * (long)1000 / (long)duration ) ;
+    long temp_rotSpeed =  ((long)rotStepsToGo * (long)1000 / (long)duration );	// calc Speed in Integer Math
+    long temp_penSpeed =  ((long)penStepsToGo * (long)1000 / (long)duration ) ;
 
-  if (temp_rotSpeed <0 ) //remove sign, there is no negative Speed....
-    temp_rotSpeed= -temp_rotSpeed;
+    float rotSpeed= (float) abs(temp_rotSpeed);	// type cast 
+    float penSpeed= (float) abs(temp_penSpeed);
 
-  if (temp_penSpeed <0 ) //remove sign, there is no negative Speed....
-    temp_penSpeed= -temp_penSpeed;
-
-  float rotSpeed= (float) temp_rotSpeed;	// type cast 
-  float penSpeed= (float) temp_penSpeed;
-
-  rotMotor.move(rotStepsToGo);		// finally, let us set the target position...
-  rotMotor.setSpeed(rotSpeed);		// and the Speed!
-
-  penMotor.move(penStepsToGo);
-  penMotor.setSpeed( penSpeed );
+    //set Coordinates and Speed
+    rotMotor.move(rotStepsToGo);		// finally, let us set the target position...
+    rotMotor.setSpeed(rotSpeed);		// and the Speed!
+    penMotor.move(penStepsToGo);
+    penMotor.setSpeed( penSpeed );
+  }
 
   while ( penMotor.distanceToGo() || rotMotor.distanceToGo() ) { 
     penMotor.runSpeedToPosition(); // Moving.... moving... moving....
@@ -265,37 +267,7 @@ void enableMotors(){
        case 0: motorsOff();
                sendAck();
                break;       
-       case 1: rotStepMode=16; 
-               penStepMode=16;
-               motorsOn();
-               sendAck();
-               break;
-       case 2: rotStepMode=8; 
-               penStepMode=8;
-			   rotStepCorrection = rotStepMode/rotMicrostep;
-			   penStepCorrection = penStepMode/penMicrostep;
-               motorsOn();
-               sendAck();
-               break;
-       case 3: rotStepMode=4; 
-               penStepMode=4;
-			   rotStepCorrection = rotStepMode/rotMicrostep;
-			   penStepCorrection = penStepMode/penMicrostep;
-               motorsOn();
-               sendAck();
-               break;
-       case 4: rotStepMode=2; 
-               penStepMode=2;
-			   rotStepCorrection = rotStepMode/rotMicrostep;
-			   penStepCorrection = penStepMode/penMicrostep;
-               motorsOn();
-               sendAck();
-               break;
-       case 5: rotStepMode=1; 
-               penStepMode=1;
-			   rotStepCorrection = rotStepMode/rotMicrostep;
-			   penStepCorrection = penStepMode/penMicrostep;
-               motorsOn();
+       case 1: motorsOn();
                sendAck();
                break;
        default:
@@ -308,32 +280,9 @@ void enableMotors(){
        case 0: motorsOff();
                sendAck();
                break;  
-       case 1: rotStepMode=16; 
-               penStepMode=16;
-               motorsOn();
+       case 1: motorsOn();
                sendAck();
                break;
-       case 2: rotStepMode=8; 
-               penStepMode=8;
-               motorsOn();
-               sendAck();
-               break;
-       case 3: rotStepMode=4; 
-               penStepMode=4;
-               motorsOn();
-               sendAck();
-               break;
-       case 4: rotStepMode=2; 
-               penStepMode=2;
-               motorsOn();
-               sendAck();
-                 break;
-       case 5: rotStepMode=1; 
-               penStepMode=1;
-               motorsOn();
-               sendAck();
-               break;
-       
        default:
                sendError();
       }
@@ -373,11 +322,11 @@ void stepperModeConfigure(){
       value = atoi(val);
   if ((arg != NULL) && (val != NULL)){
      switch (cmd) {      
-       case 4: penDownPos= (int) ((float) (value-6000)/(float) 94.18); // transformation from EBB to PWM-Stepper
+       case 4: penDownPos= (int) ((float) (value-6000)/(float) 133.3); // transformation from EBB to PWM-Servo
                storePenDownPosInEE();
                sendAck();
                break;
-       case 5: penUpPos= (int)((float) (value-6000)/(float) 94.18); // transformation from EBB to PWM-Stepper
+       case 5: penUpPos= (int)((float) (value-6000)/(float) 133.3); // transformation from EBB to PWM-Servo
                storePenUpPosInEE();
                sendAck();
                break;
